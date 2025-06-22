@@ -234,6 +234,8 @@ const UserDashboard = () => {
     { icon: 'storefront', label: 'Market Link', route: 'MarketLink', color: '#2196F3' },
     { icon: 'book', label: 'Farm Diary', route: 'FarmDiary', color: '#9C27B0' },
     { icon: 'school', label: 'Elearning', route: 'Elearning', color: '#F44336' },
+    { icon: 'chatbubbles-outline', label: 'TaniMate ', route: 'Chatbot', color: '#F44336' },
+    
   ];
 
   const drawerItems = [
@@ -242,6 +244,7 @@ const UserDashboard = () => {
     { icon: 'storefront-outline', label: 'Market Link', action: () => navigation.navigate('MarketLink') },
     { icon: 'book-outline', label: 'Farm Diary', action: () => navigation.navigate('FarmDiary') },
     { icon: 'school-outline', label: 'Elearning', action: () => navigation.navigate('Elearning') },
+    { icon: 'chatbubbles-outline', label: 'TaniMate', action: () => navigation.navigate('Chatbot') },
     { icon: 'person-circle-outline', label: 'Edit Profile', action: handleEditProfile },
     { icon: 'settings-outline', label: 'Settings', action: () => navigation.navigate('Settings') },
     { icon: 'help-circle-outline', label: 'Help & Support', action: () => navigation.navigate('Support') },
@@ -640,8 +643,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    backgroundColor: '#667eea',
+    background: 'green',
+    backgroundColor: 'green',
     paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
     paddingBottom: 20,
   },

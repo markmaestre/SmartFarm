@@ -441,8 +441,8 @@ const styles = StyleSheet.create({
   },
   heroContainer: {
     backgroundColor: '#E8F5E9',
-    padding: 24,
-    paddingTop: 8,
+    padding: 20,
+    paddingTop: 10,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     marginBottom: 16,

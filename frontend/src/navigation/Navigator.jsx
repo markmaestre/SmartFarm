@@ -9,6 +9,7 @@ import Register from '../components/Dashboard/Register';
 import AdminDashboard from '../components/Admin/AdminDashboard';
 import UserDashboard from '../components/Client/UserDashboard';
 import Elearning from '../components/Client/Elearning';
+import Chatbot from '../components/Client/Chatbot';
 
 const Stack = createStackNavigator();
 
@@ -33,6 +34,7 @@ const Navigator = () => {
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         <Stack.Screen name="UserDashboard" component={UserDashboard} />
         <Stack.Screen name="Elearning" component={Elearning} />
+        <Stack.Screen name="Chatbot" component={Chatbot} />
       </Stack.Navigator>
     </Provider>
   );
