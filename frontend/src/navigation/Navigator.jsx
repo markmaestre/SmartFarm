@@ -10,6 +10,8 @@ import AdminDashboard from '../components/Admin/AdminDashboard';
 import UserDashboard from '../components/Client/UserDashboard';
 import Elearning from '../components/Client/Elearning';
 import Chatbot from '../components/Client/Chatbot';
+import FarmDiary from '../components/Client/FarmDiary';
+import MarketLink from '../components/Client/MarketLink';
 
 const Stack = createStackNavigator();
 
@@ -35,6 +37,9 @@ const Navigator = () => {
         <Stack.Screen name="UserDashboard" component={UserDashboard} />
         <Stack.Screen name="Elearning" component={Elearning} />
         <Stack.Screen name="Chatbot" component={Chatbot} />
+        <Stack.Screen name="FarmDiary" component={FarmDiary} />
+        <Stack.Screen name="MarketLink" component={MarketLink} />
+
       </Stack.Navigator>
     </Provider>
   );

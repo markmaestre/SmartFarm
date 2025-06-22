@@ -6,7 +6,7 @@ const auth = require('../Middleware/auth');
 
 const router = express.Router();
 
-// Register route (already exists)
+
 router.post('/register', async (req, res) => {
   const { username, email, password, bod, gender, address, role } = req.body;
   try {
