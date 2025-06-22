@@ -233,7 +233,7 @@ const UserDashboard = () => {
     { icon: 'bar-chart', label: 'Crop Guide Hub', route: 'CropGuide', color: '#FF9800' },
     { icon: 'storefront', label: 'Market Link', route: 'MarketLink', color: '#2196F3' },
     { icon: 'book', label: 'Farm Diary', route: 'FarmDiary', color: '#9C27B0' },
-    { icon: 'school', label: 'eLearning', route: 'ELearning', color: '#F44336' },
+    { icon: 'school', label: 'Elearning', route: 'Elearning', color: '#F44336' },
   ];
 
   const drawerItems = [
@@ -241,7 +241,7 @@ const UserDashboard = () => {
     { icon: 'bar-chart-outline', label: 'Crop Guide Hub', action: () => navigation.navigate('CropGuide') },
     { icon: 'storefront-outline', label: 'Market Link', action: () => navigation.navigate('MarketLink') },
     { icon: 'book-outline', label: 'Farm Diary', action: () => navigation.navigate('FarmDiary') },
-    { icon: 'school-outline', label: 'eLearning', action: () => navigation.navigate('ELearning') },
+    { icon: 'school-outline', label: 'Elearning', action: () => navigation.navigate('Elearning') },
     { icon: 'person-circle-outline', label: 'Edit Profile', action: handleEditProfile },
     { icon: 'settings-outline', label: 'Settings', action: () => navigation.navigate('Settings') },
     { icon: 'help-circle-outline', label: 'Help & Support', action: () => navigation.navigate('Support') },
