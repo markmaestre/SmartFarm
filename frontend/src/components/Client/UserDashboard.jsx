@@ -10,11 +10,10 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Dimensions,
-  StatusBar,
-  Platform,
   SafeAreaView,
   Animated,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
@@ -22,22 +21,30 @@ import { logout, editProfile } from '../../redux/slices/authSlice';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
 const UserDashboard = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
-  const { user, loading: authLoading, error } = useSelector(state => state.auth);
+  const { user, loading: authLoading } = useSelector(state => state.auth);
 
   const [showModal, setShowModal] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
-  const [drawerAnimation] = useState(new Animated.Value(-width * 0.8));
-  const [overlayAnimation] = useState(new Animated.Value(0));
+  const [drawerAnimation] = useState(new Animated.Value(-width * 0.85));
+  const [cardAnimations] = useState([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
   
   const [formData, setFormData] = useState({
     username: user?.username || '',
@@ -56,10 +63,17 @@ const UserDashboard = () => {
 
   useEffect(() => {
     getCurrentLocation();
+    animateCards();
+    
+    // Update date and time every second
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    // Update form data when user changes
     if (user) {
       setFormData({
         username: user.username || '',
@@ -72,6 +86,18 @@ const UserDashboard = () => {
     }
   }, [user]);
 
+  const animateCards = () => {
+    const animations = cardAnimations.map((anim, index) =>
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 600,
+        delay: index * 100,
+        useNativeDriver: true,
+      })
+    );
+    Animated.stagger(100, animations).start();
+  };
+
   const getCurrentLocation = async () => {
     setLoading(true);
     setLocationError(null);
@@ -79,60 +105,133 @@ const UserDashboard = () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setLocationError('Location permission denied. Using default location.');
-        await fetchWeatherByCity('Manila,PH');
+        setLocationError('Location permission denied');
+        // Default to Manila coordinates
+        await fetchWeatherByCoordinates(14.5995, 120.9842, 'Manila, Philippines');
         return;
       }
 
       let location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-      setLocation({ lat: latitude, lon: longitude });
-      await fetchWeatherByCoordinates(latitude, longitude);
+      
+      // Get location name using reverse geocoding
+      try {
+        const locationName = await getLocationName(latitude, longitude);
+        await fetchWeatherByCoordinates(latitude, longitude, locationName);
+      } catch (error) {
+        await fetchWeatherByCoordinates(latitude, longitude, 'Your Location');
+      }
     } catch (error) {
       console.error('Error getting location:', error);
-      setLocationError('Unable to get location. Using default location.');
-      await fetchWeatherByCity('Manila,PH');
+      setLocationError('Unable to get location');
+      // Default to Manila coordinates
+      await fetchWeatherByCoordinates(14.5995, 120.9842, 'Manila, Philippines');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchWeatherByCoordinates = async (lat, lon) => {
+  const getLocationName = async (latitude, longitude) => {
     try {
-      const API_KEY = '14c7dc684b77a84d37ab9473fb19a1d5';
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
       );
       const data = await response.json();
-      setWeather(data);
+      return data.city || data.locality || data.principalSubdivision || 'Unknown Location';
+    } catch (error) {
+      console.error('Error getting location name:', error);
+      return 'Your Location';
+    }
+  };
+
+  const fetchWeatherByCoordinates = async (lat, lon, locationName = 'Your Location') => {
+    try {
+      // Open-Meteo API call
+      const response = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
+      );
+      const data = await response.json();
+      
+      if (data.current) {
+        const weatherData = {
+          temperature: Math.round(data.current.temperature_2m),
+          humidity: data.current.relative_humidity_2m,
+          windSpeed: Math.round(data.current.wind_speed_10m * 3.6), // Convert m/s to km/h
+          weatherCode: data.current.weather_code,
+          locationName: locationName,
+          description: getWeatherDescription(data.current.weather_code),
+        };
+        setWeather(weatherData);
+      } else {
+        throw new Error('Invalid weather data');
+      }
     } catch (error) {
       console.error('Error fetching weather:', error);
       setLocationError('Unable to fetch weather data');
     }
   };
 
-  const fetchWeatherByCity = async (city) => {
-    try {
-      const API_KEY = '14c7dc684b77a84d37ab9473fb19a1d5';
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
-      );
-      const data = await response.json();
-      setWeather(data);
-    } catch (error) {
-      console.error('Error fetching weather:', error);
-      setLocationError('Unable to fetch weather data');
-    }
+  // WMO Weather interpretation codes to descriptions
+  const getWeatherDescription = (code) => {
+    const weatherCodes = {
+      0: 'Clear sky',
+      1: 'Mainly clear',
+      2: 'Partly cloudy',
+      3: 'Overcast',
+      45: 'Foggy',
+      48: 'Depositing rime fog',
+      51: 'Light drizzle',
+      53: 'Moderate drizzle',
+      55: 'Dense drizzle',
+      56: 'Light freezing drizzle',
+      57: 'Dense freezing drizzle',
+      61: 'Slight rain',
+      63: 'Moderate rain',
+      65: 'Heavy rain',
+      66: 'Light freezing rain',
+      67: 'Heavy freezing rain',
+      71: 'Slight snow fall',
+      73: 'Moderate snow fall',
+      75: 'Heavy snow fall',
+      77: 'Snow grains',
+      80: 'Slight rain showers',
+      81: 'Moderate rain showers',
+      82: 'Violent rain showers',
+      85: 'Slight snow showers',
+      86: 'Heavy snow showers',
+      95: 'Thunderstorm',
+      96: 'Thunderstorm with slight hail',
+      99: 'Thunderstorm with heavy hail'
+    };
+    
+    return weatherCodes[code] || 'Unknown weather';
+  };
+
+  const getWeatherIcon = (code) => {
+    if (code === 0 || code === 1) return 'sunny';
+    if (code === 2 || code === 3) return 'partly-sunny';
+    if (code >= 51 && code <= 67) return 'rainy';
+    if (code >= 71 && code <= 86) return 'snow';
+    if (code >= 95) return 'thunderstorm';
+    return 'cloud';
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const handleLogout = () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      'Sign Out',
+      'Are you sure you want to sign out of your farming dashboard?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Logout',
+          text: 'Sign Out',
           style: 'destructive',
           onPress: () => {
             dispatch(logout());
@@ -156,7 +255,7 @@ const UserDashboard = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant camera roll permissions to change profile picture.');
+        Alert.alert('Permission Required', 'Please grant camera roll permissions to update your profile picture.');
         return;
       }
 
@@ -172,7 +271,7 @@ const UserDashboard = () => {
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      Alert.alert('Error', 'Failed to select image');
     }
   };
 
@@ -188,7 +287,7 @@ const UserDashboard = () => {
       };
 
       await dispatch(editProfile(profileData)).unwrap();
-      Alert.alert('Success', 'Profile updated successfully!');
+      Alert.alert('Success', 'Your profile has been updated successfully!');
       setShowModal(false);
     } catch (error) {
       Alert.alert('Error', error || 'Failed to update profile');
@@ -197,432 +296,434 @@ const UserDashboard = () => {
 
   const openDrawer = () => {
     setShowDrawer(true);
-    Animated.parallel([
-      Animated.timing(drawerAnimation, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayAnimation, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(drawerAnimation, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
   const closeDrawer = () => {
-    Animated.parallel([
-      Animated.timing(drawerAnimation, {
-        toValue: -width * 0.8,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayAnimation, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
+    Animated.timing(drawerAnimation, {
+      toValue: -width * 0.85,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
       setShowDrawer(false);
     });
   };
 
   const navItems = [
-    { icon: 'home', label: 'Dashboard', route: 'UserDashboard', color: '#4CAF50' },
-    { icon: 'bar-chart', label: 'Crop Guide Hub', route: 'CropGuide', color: '#FF9800' },
-    { icon: 'storefront', label: 'Market Link', route: 'MarketLink', color: '#2196F3' },
-    { icon: 'book', label: 'Farm Diary', route: 'FarmDiary', color: '#9C27B0' },
-    { icon: 'school', label: 'Elearning', route: 'Elearning', color: '#F44336' },
-    { icon: 'chatbubbles-outline', label: 'TaniMate ', route: 'Chatbot', color: '#F44336' },
-    
+    { icon: 'home', label: 'Farm Dashboard', route: 'UserDashboard', color: '#2E7D32', bgColor: '#E8F5E8' },
+    { icon: 'bar-chart', label: 'Crop Intelligence', route: 'CropGuide', color: '#FF8F00', bgColor: '#FFF3E0' },
+    { icon: 'storefront', label: 'Market Connect', route: 'MarketLink', color: '#1976D2', bgColor: '#E3F2FD' },
+    { icon: 'book', label: 'Farm Records', route: 'FarmDiary', color: '#7B1FA2', bgColor: '#F3E5F5' },
+    { icon: 'school', label: 'Agricultural Learning', route: 'Elearning', color: '#D32F2F', bgColor: '#FFEBEE' },
+    { icon: 'chatbubbles-outline', label: 'Farm Assistant', route: 'Chatbot', color: '#F57C00', bgColor: '#FFF8E1' },
   ];
 
   const drawerItems = [
-    { icon: 'home-outline', label: 'Dashboard', action: () => navigation.navigate('UserDashboard') },
-    { icon: 'bar-chart-outline', label: 'Crop Guide Hub', action: () => navigation.navigate('CropGuide') },
-    { icon: 'storefront-outline', label: 'Market Link', action: () => navigation.navigate('MarketLink') },
-    { icon: 'book-outline', label: 'Farm Diary', action: () => navigation.navigate('FarmDiary') },
-    { icon: 'school-outline', label: 'Elearning', action: () => navigation.navigate('Elearning') },
-    { icon: 'chatbubbles-outline', label: 'TaniMate', action: () => navigation.navigate('Chatbot') },
-    { icon: 'person-circle-outline', label: 'Edit Profile', action: handleEditProfile },
-    { icon: 'settings-outline', label: 'Settings', action: () => navigation.navigate('Settings') },
-    { icon: 'help-circle-outline', label: 'Help & Support', action: () => navigation.navigate('Support') },
-    { icon: 'log-out-outline', label: 'Logout', action: handleLogout, isLogout: true },
+    { icon: 'home-outline', label: 'Farm Dashboard', action: () => navigation.navigate('UserDashboard') },
+    { icon: 'bar-chart-outline', label: 'Crop Intelligence', action: () => navigation.navigate('CropGuide') },
+    { icon: 'storefront-outline', label: 'Market Connect', action: () => navigation.navigate('MarketLink') },
+    { icon: 'book-outline', label: 'Farm Records', action: () => navigation.navigate('FarmDiary') },
+    { icon: 'school-outline', label: 'Agricultural Learning', action: () => navigation.navigate('Elearning') },
+    { icon: 'chatbubbles-outline', label: 'Farm Assistant', action: () => navigation.navigate('Chatbot') },
+    { icon: 'person-circle-outline', label: 'Profile Settings', action: handleEditProfile },
+    { icon: 'log-out-outline', label: 'Sign Out', action: handleLogout, isLogout: true },
   ];
-
-  const getWeatherIcon = (weatherMain) => {
-    switch (weatherMain?.toLowerCase()) {
-      case 'clear':
-        return '☀️';
-      case 'clouds':
-        return '☁️';
-      case 'rain':
-        return '🌧️';
-      case 'thunderstorm':
-        return '⛈️';
-      case 'snow':
-        return '❄️';
-      case 'mist':
-      case 'haze':
-        return '🌫️';
-      default:
-        return '🌤️';
-    }
-  };
-
-  const getCurrentDate = () => {
-    const options = { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    };
-    return new Date().toLocaleDateString('en-US', options);
-  };
 
   if (!user || user.role !== 'user') return null;
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#667eea" />
+      <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={['#2E7D32', '#4CAF50', '#66BB6A']}
+        style={styles.headerGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity onPress={openDrawer} style={styles.menuButton}>
-              <Ionicons name="menu" size={24} color="#fff" />
-            </TouchableOpacity>
-            
+          <TouchableOpacity onPress={openDrawer} style={styles.menuButton}>
+            <Ionicons name="menu" size={26} color="#fff" />
+          </TouchableOpacity>
+          
+          <View style={styles.userInfo}>
             <View style={styles.profileSection}>
-              <View style={styles.profileImageContainer}>
-                {user.profile ? (
-                  <Image source={{ uri: user.profile }} style={styles.profileImage} />
-                ) : (
-                  <View style={styles.defaultAvatar}>
-                    <Ionicons name="person" size={30} color="#fff" />
-                  </View>
-                )}
-                <View style={styles.onlineIndicator} />
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.username}>{user.username}</Text>
-                <Text style={styles.status}>Online</Text>
+              {user.profile ? (
+                <Image source={{ uri: user.profile }} style={styles.profileImage} />
+              ) : (
+                <View style={styles.defaultAvatar}>
+                  <Ionicons name="person" size={32} color="#fff" />
+                </View>
+              )}
+              <View style={styles.profileBadge}>
+                <Ionicons name="leaf" size={12} color="#4CAF50" />
               </View>
             </View>
             
-            <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#fff" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>3</Text>
-              </View>
-            </TouchableOpacity>
+            <View style={styles.userDetails}>
+              <Text style={styles.welcomeText}>Welcome back,</Text>
+              <Text style={styles.username}>{user.username}</Text>
+              <Text style={styles.userRole}>Agricultural Professional</Text>
+            </View>
           </View>
+
+          <TouchableOpacity style={styles.notificationButton}>
+            <Ionicons name="notifications-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Date and Time Section */}
+        <View style={styles.dateTimeSection}>
+          <Text style={styles.currentDate}>{formatDate(currentDateTime)}</Text>
+          <Text style={styles.currentTime}>{formatTime(currentDateTime)}</Text>
         </View>
 
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Welcome back, {user.username}! 👋</Text>
-          <Text style={styles.welcomeSubtitle}>Here's what's happening with your farm today</Text>
-          <Text style={styles.dateTime}>{getCurrentDate()}</Text>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionGrid}>
-            {navItems.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.actionCard}
-                onPress={() => navigation.navigate(item.route)}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: item.color }]}>
-                  <Ionicons name={item.icon} size={24} color="#fff" />
-                </View>
-                <Text style={styles.actionLabel}>{item.label}</Text>
+        {/* Weather Card */}
+        <View style={styles.weatherSection}>
+          <LinearGradient
+            colors={['#1976D2', '#42A5F5']}
+            style={styles.weatherCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.weatherHeader}>
+              <View>
+                <Text style={styles.weatherTitle}>Field Conditions</Text>
+                <Text style={styles.weatherLocation}>
+                  <Ionicons name="location" size={14} color="rgba(255,255,255,0.8)" />
+                  {weather ? ` ${weather.locationName}` : ' Loading...'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={getCurrentLocation} style={styles.refreshButton}>
+                <Ionicons name="refresh" size={20} color="#fff" />
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+            </View>
 
-        {/* Weather Widget */}
-        <View style={styles.section}>
-          <View style={styles.weatherHeader}>
-            <Text style={styles.sectionTitle}>
-              <Ionicons name="cloud-outline" size={20} color="#2d3748" /> Weather
-            </Text>
-            <TouchableOpacity onPress={getCurrentLocation} style={styles.refreshButton}>
-              <Ionicons name="refresh" size={20} color="#3182ce" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.weatherWidget}>
             {locationError && (
-              <View style={styles.locationAlert}>
-                <Ionicons name="warning" size={16} color="#856404" />
-                <Text style={styles.alertText}>{locationError}</Text>
-              </View>
+              <Text style={styles.weatherError}>{locationError}</Text>
             )}
 
             {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#3182ce" />
+              <View style={styles.weatherLoading}>
+                <ActivityIndicator size="large" color="#fff" />
                 <Text style={styles.loadingText}>Getting weather data...</Text>
               </View>
             ) : weather ? (
               <View style={styles.weatherContent}>
                 <View style={styles.weatherMain}>
-                  <Text style={styles.weatherIcon}>
-                    {getWeatherIcon(weather.weather?.[0]?.main)}
-                  </Text>
-                  <View style={styles.weatherTemp}>
-                    <Text style={styles.temperature}>
-                      {Math.round(weather.main?.temp || 0)}°C
-                    </Text>
-                    <Text style={styles.weatherDesc}>
-                      {weather.weather?.[0]?.description || 'Clear sky'}
-                    </Text>
-                    <Text style={styles.locationText}>
-                      📍 {weather.name || 'Your Location'}
-                    </Text>
-                  </View>
+                  <Ionicons 
+                    name={getWeatherIcon(weather.weatherCode)} 
+                    size={48} 
+                    color="#fff" 
+                  />
+                  <Text style={styles.temperature}>{weather.temperature}°C</Text>
                 </View>
-
+                
+                <Text style={styles.weatherDesc}>{weather.description}</Text>
+                
                 <View style={styles.weatherDetails}>
-                  <View style={styles.weatherItem}>
-                    <Ionicons name="thermometer" size={20} color="#FF6B6B" />
-                    <Text style={styles.weatherLabel}>Feels like</Text>
-                    <Text style={styles.weatherValue}>
-                      {Math.round(weather.main?.feels_like || 0)}°C
-                    </Text>
+                  <View style={styles.weatherDetailItem}>
+                    <Ionicons name="water" size={16} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.weatherDetailText}>Humidity</Text>
+                    <Text style={styles.weatherDetailValue}>{weather.humidity}%</Text>
                   </View>
-                  <View style={styles.weatherItem}>
-                    <Ionicons name="water" size={20} color="#4ECDC4" />
-                    <Text style={styles.weatherLabel}>Humidity</Text>
-                    <Text style={styles.weatherValue}>{weather.main?.humidity || 0}%</Text>
+                  <View style={styles.weatherDetailItem}>
+                    <Ionicons name="leaf" size={16} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.weatherDetailText}>Wind Speed</Text>
+                    <Text style={styles.weatherDetailValue}>{weather.windSpeed} km/h</Text>
                   </View>
-                  <View style={styles.weatherItem}>
-                    <Ionicons name="leaf" size={20} color="#95A5A6" />
-                    <Text style={styles.weatherLabel}>Wind</Text>
-                    <Text style={styles.weatherValue}>
-                      {Math.round((weather.wind?.speed || 0) * 3.6)} km/h
-                    </Text>
-                  </View>
-                  <View style={styles.weatherItem}>
-                    <Ionicons name="eye" size={20} color="#3498DB" />
-                    <Text style={styles.weatherLabel}>Visibility</Text>
-                    <Text style={styles.weatherValue}>
-                      {Math.round((weather.visibility || 0) / 1000)} km
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.weatherAdvice}>
-                  <Text style={styles.adviceTitle}>🌱 Farming Advice</Text>
-                  <Text style={styles.adviceText}>
-                    {weather.main?.temp > 30 
-                      ? "🌡️ Hot day ahead! Consider watering your crops early morning or evening."
-                      : weather.main?.temp < 15
-                      ? "🧊 Cool weather. Perfect for cool-season crops like lettuce and spinach."
-                      : "🌱 Great weather for most farming activities. Perfect day to tend your crops!"
-                    }
-                  </Text>
                 </View>
               </View>
             ) : (
-              <View style={styles.weatherError}>
-                <Text style={styles.errorText}>Unable to load weather data</Text>
-                <TouchableOpacity onPress={getCurrentLocation} style={styles.retryButton}>
-                  <Text style={styles.retryText}>Try Again</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.weatherError}>Unable to load weather data</Text>
             )}
+          </LinearGradient>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Farm Management Tools</Text>
+            <Text style={styles.sectionSubtitle}>Access your agricultural resources</Text>
+          </View>
+          
+          <View style={styles.actionGrid}>
+            {navItems.map((item, index) => (
+              <Animated.View
+                key={index}
+                style={[
+                  styles.actionCardWrapper,
+                  {
+                    opacity: cardAnimations[index],
+                    transform: [{
+                      translateY: cardAnimations[index].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [50, 0],
+                      }),
+                    }],
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={[styles.actionCard, { backgroundColor: item.bgColor }]}
+                  onPress={() => navigation.navigate(item.route)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
+                    <Ionicons name={item.icon} size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.actionLabel}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#666" />
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </View>
+        </View>
+
+        {/* Farm Stats - Now using real user data */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Farm Overview</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Ionicons name="leaf" size={24} color="#4CAF50" />
+              <Text style={styles.statValue}>{user.cropCount || '0'}</Text>
+              <Text style={styles.statLabel}>Active Crops</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="calendar" size={24} color="#FF9800" />
+              <Text style={styles.statValue}>{user.harvestDue || '0'}</Text>
+              <Text style={styles.statLabel}>Harvest Due</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="trending-up" size={24} color="#2196F3" />
+              <Text style={styles.statValue}>{user.yieldEfficiency || '0%'}</Text>
+              <Text style={styles.statLabel}>Yield Efficiency</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Drawer Overlay */}
+      {/* Enhanced Drawer */}
       {showDrawer && (
-        <Animated.View 
-          style={[
-            styles.drawerOverlay,
-            { opacity: overlayAnimation }
-          ]}
-        >
+        <>
           <TouchableOpacity 
-            style={styles.overlayTouchable}
-            onPress={closeDrawer}
-            activeOpacity={1}
+            style={styles.overlay} 
+            onPress={closeDrawer} 
+            activeOpacity={1} 
           />
-        </Animated.View>
-      )}
-
-      {/* Drawer */}
-      {showDrawer && (
-        <Animated.View 
-          style={[
-            styles.drawer,
-            { transform: [{ translateX: drawerAnimation }] }
-          ]}
-        >
-          <View style={styles.drawerHeader}>
-            <View style={styles.drawerProfileSection}>
-              <View style={styles.drawerProfileImageContainer}>
+          <Animated.View 
+            style={[
+              styles.drawer,
+              { transform: [{ translateX: drawerAnimation }] }
+            ]}
+          >
+            <LinearGradient
+              colors={['#2E7D32', '#4CAF50']}
+              style={styles.drawerHeaderGradient}
+            >
+              <View style={styles.drawerHeader}>
                 {user.profile ? (
                   <Image source={{ uri: user.profile }} style={styles.drawerProfileImage} />
                 ) : (
                   <View style={styles.drawerDefaultAvatar}>
-                    <Ionicons name="person" size={40} color="#667eea" />
+                    <Ionicons name="person" size={40} color="#fff" />
                   </View>
                 )}
+                <Text style={styles.drawerUsername}>{user.username}</Text>
+                <Text style={styles.drawerEmail}>{user.email}</Text>
+                <View style={styles.drawerBadge}>
+                  <Ionicons name="shield-checkmark" size={12} color="#4CAF50" />
+                  <Text style={styles.drawerBadgeText}>Verified Farmer</Text>
+                </View>
               </View>
-              <Text style={styles.drawerUsername}>{user.username}</Text>
-              <Text style={styles.drawerEmail}>{user.email}</Text>
-            </View>
-          </View>
+            </LinearGradient>
 
-          <ScrollView style={styles.drawerContent}>
-            {drawerItems.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.drawerItem,
-                  item.isLogout && styles.drawerLogoutItem
-                ]}
-                onPress={() => {
-                  closeDrawer();
-                  setTimeout(() => item.action(), 300);
-                }}
-              >
-                <Ionicons 
-                  name={item.icon} 
-                  size={20} 
-                  color={item.isLogout ? '#e53e3e' : '#4a5568'} 
-                />
-                <Text style={[
-                  styles.drawerItemText,
-                  item.isLogout && styles.drawerLogoutText
-                ]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Animated.View>
+            <ScrollView style={styles.drawerContent}>
+              {drawerItems.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.drawerItem}
+                  onPress={() => {
+                    closeDrawer();
+                    setTimeout(() => item.action(), 300);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.drawerIconContainer, item.isLogout && styles.logoutIconContainer]}>
+                    <Ionicons 
+                      name={item.icon} 
+                      size={20} 
+                      color={item.isLogout ? '#f44336' : '#666'} 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.drawerItemText,
+                    item.isLogout && styles.logoutText
+                  ]}>
+                    {item.label}
+                  </Text>
+                  <Ionicons 
+                    name="chevron-forward" 
+                    size={16} 
+                    color={item.isLogout ? '#f44336' : '#ccc'} 
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        </>
       )}
 
-      {/* Edit Profile Modal */}
+      {/* Enhanced Edit Profile Modal */}
       <Modal
         visible={showModal}
         animationType="slide"
-        presentationStyle="pageSheet"
         onRequestClose={() => setShowModal(false)}
+        presentationStyle="formSheet"
       >
         <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Ionicons name="close" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
+          <LinearGradient
+            colors={['#2E7D32', '#4CAF50']}
+            style={styles.modalHeaderGradient}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Profile Settings</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
 
-          <ScrollView style={styles.modalContent}>
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* Profile Image Section */}
-            <View style={styles.profileImageSection}>
-              <TouchableOpacity onPress={handleImagePicker} style={styles.profileImageButton}>
+            <View style={styles.imageSection}>
+              <TouchableOpacity onPress={handleImagePicker} style={styles.imageContainer}>
                 {formData.profile ? (
                   <Image source={{ uri: formData.profile }} style={styles.modalProfileImage} />
                 ) : (
                   <View style={styles.modalDefaultAvatar}>
-                    <Ionicons name="person" size={40} color="#667eea" />
+                    <Ionicons name="person" size={40} color="#4CAF50" />
                   </View>
                 )}
-                <View style={styles.cameraIcon}>
-                  <Ionicons name="camera" size={20} color="#fff" />
+                <View style={styles.cameraButton}>
+                  <Ionicons name="camera" size={16} color="#fff" />
                 </View>
               </TouchableOpacity>
-              <Text style={styles.changePhotoText}>Tap to change photo</Text>
+              <Text style={styles.changePhotoText}>Tap to update profile photo</Text>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Username</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.username}
-                onChangeText={(value) => handleChange('username', value)}
-                placeholder="Enter username"
-              />
-            </View>
+            {/* Form Fields */}
+            <View style={styles.formSection}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="person-outline" size={16} color="#666" /> Full Name
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.username}
+                  onChangeText={(value) => handleChange('username', value)}
+                  placeholder="Enter your full name"
+                  placeholderTextColor="#999"
+                />
+              </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.email}
-                onChangeText={(value) => handleChange('email', value)}
-                placeholder="Enter email"
-                keyboardType="email-address"
-              />
-            </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="mail-outline" size={16} color="#666" /> Email Address
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.email}
+                  onChangeText={(value) => handleChange('email', value)}
+                  placeholder="Enter your email address"
+                  keyboardType="email-address"
+                  placeholderTextColor="#999"
+                />
+              </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Address</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.address}
-                onChangeText={(value) => handleChange('address', value)}
-                placeholder="Enter address"
-                multiline
-              />
-            </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="location-outline" size={16} color="#666" /> Farm Address
+                </Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.address}
+                  onChangeText={(value) => handleChange('address', value)}
+                  placeholder="Enter your farm location"
+                  multiline
+                  numberOfLines={3}
+                  placeholderTextColor="#999"
+                />
+              </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Birth Date</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.bod}
-                onChangeText={(value) => handleChange('bod', value)}
-                placeholder="YYYY-MM-DD"
-              />
-            </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="calendar-outline" size={16} color="#666" /> Date of Birth
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.bod}
+                  onChangeText={(value) => handleChange('bod', value)}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#999"
+                />
+              </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Gender</Text>
-              <View style={styles.genderButtons}>
-                {['Male', 'Female', 'Other'].map((gender) => (
-                  <TouchableOpacity
-                    key={gender}
-                    style={[
-                      styles.genderButton,
-                      formData.gender === gender && styles.genderButtonActive
-                    ]}
-                    onPress={() => handleChange('gender', gender)}
-                  >
-                    <Text style={[
-                      styles.genderButtonText,
-                      formData.gender === gender && styles.genderButtonTextActive
-                    ]}>
-                      {gender}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="person-outline" size={16} color="#666" /> Gender
+                </Text>
+                <View style={styles.genderButtons}>
+                  {['Male', 'Female', 'Other'].map((gender) => (
+                    <TouchableOpacity
+                      key={gender}
+                      style={[
+                        styles.genderButton,
+                        formData.gender === gender && styles.genderButtonActive
+                      ]}
+                      onPress={() => handleChange('gender', gender)}
+                    >
+                      <Text style={[
+                        styles.genderButtonText,
+                        formData.gender === gender && styles.genderButtonTextActive
+                      ]}>
+                        {gender}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
 
+            {/* Action Buttons */}
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 onPress={handleSubmit} 
                 style={[styles.saveButton, authLoading && styles.disabledButton]}
                 disabled={authLoading}
               >
-                {authLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save Changes</Text>
-                )}
+                <LinearGradient
+                  colors={['#2E7D32', '#4CAF50']}
+                  style={styles.saveButtonGradient}
+                >
+                  {authLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark" size={20} color="#fff" />
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
+              
               <TouchableOpacity onPress={() => setShowModal(false)} style={styles.cancelButton}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -637,45 +738,37 @@ const UserDashboard = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f8f9fa',
   },
-  scrollView: {
-    flex: 1,
+  headerGradient: {
+    paddingTop: 10,
   },
   header: {
-    background: 'green',
-    backgroundColor: 'green',
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
-    paddingBottom: 20,
-  },
-  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingVertical: 15,
   },
   menuButton: {
     padding: 8,
-    borderRadius: 20,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  profileSection: {
+  userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     marginLeft: 15,
   },
-  profileImageContainer: {
+  profileSection: {
     position: 'relative',
-    marginRight: 15,
   },
   profileImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 3,
+    borderColor: '#fff',
   },
   defaultAvatar: {
     width: 50,
@@ -685,123 +778,76 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#4CAF50',
-    borderWidth: 2,
     borderColor: '#fff',
   },
-  userInfo: {
+  profileBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userDetails: {
+    marginLeft: 12,
     flex: 1,
+  },
+  welcomeText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '400',
   },
   username: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 2,
+    marginTop: 1,
   },
-  status: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+  userRole: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    fontStyle: 'italic',
   },
   notificationButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#e53e3e',
+    padding: 8,
     borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: 15,
+    paddingTop: 15,
+  },
+  dateTimeSection: {
+    marginBottom: 15,
     alignItems: 'center',
   },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  welcomeSection: {
-    padding: 20,
-    backgroundColor: '#fff',
-    margin: 20,
-    marginBottom: 10,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2d3748',
-    marginBottom: 5,
-  },
-  welcomeSubtitle: {
+  currentDate: {
     fontSize: 16,
-    color: '#718096',
-    marginBottom: 10,
-  },
-  dateTime: {
-    fontSize: 14,
-    color: '#a0aec0',
+    color: '#666',
     fontWeight: '500',
   },
-  section: {
-    marginHorizontal: 20,
+  currentTime: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginTop: 5,
+  },
+  weatherSection: {
     marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#2d3748',
-    marginBottom: 15,
-  },
-  actionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  actionCard: {
-    width: (width - 60) / 2,
-    backgroundColor: '#fff',
+  weatherCard: {
+    borderRadius: 15,
     padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  actionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  actionLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#2d3748',
-    textAlign: 'center',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
   weatherHeader: {
     flexDirection: 'row',
@@ -809,362 +855,402 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
+  weatherTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  weatherLocation: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 3,
+  },
   refreshButton: {
     padding: 5,
   },
-  weatherWidget: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  weatherError: {
+    color: '#ffebee',
+    textAlign: 'center',
+    marginVertical: 10,
   },
-  locationAlert: {
-    flexDirection: 'row',
+  weatherLoading: {
     alignItems: 'center',
-    backgroundColor: '#fff3cd',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  alertText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#856404',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    padding: 40,
+    paddingVertical: 20,
   },
   loadingText: {
+    color: '#fff',
     marginTop: 10,
-    fontSize: 14,
-    color: '#718096',
   },
   weatherContent: {
-    flex: 1,
+    alignItems: 'center',
   },
   weatherMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  weatherIcon: {
-    fontSize: 60,
-    marginRight: 20,
-  },
-  weatherTemp: {
-    flex: 1,
+    marginBottom: 5,
   },
   temperature: {
-    fontSize: 36,
-    fontWeight: '300',
-    color: '#2d3748',
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginLeft: 10,
   },
   weatherDesc: {
     fontSize: 16,
-    color: '#718096',
-    textTransform: 'capitalize',
-    marginBottom: 4,
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#a0aec0',
+    color: '#fff',
+    marginBottom: 15,
   },
   weatherDetails: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 10,
+  },
+  weatherDetailItem: {
+    alignItems: 'center',
+  },
+  weatherDetailText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 5,
+  },
+  weatherDetailValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 3,
+  },
+  section: {
+    marginBottom: 25,
+  },
+  sectionHeader: {
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 3,
+  },
+  actionGrid: {
+    flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom:20,
   },
-  weatherItem: {
-width: (width - 80) / 2,
-backgroundColor: '#f8fafc',
-borderRadius: 10,
-padding: 12,
-marginBottom: 10,
-alignItems: 'center',
-},
-weatherLabel: {
-fontSize: 12,
-color: '#718096',
-marginTop: 5,
-},
-weatherValue: {
-fontSize: 16,
-fontWeight: '600',
-color: '#2d3748',
-marginTop: 2,
-},
-weatherAdvice: {
-backgroundColor: '#ebf8ff',
-borderRadius: 10,
-padding: 15,
-marginTop: 15,
-},
-adviceTitle: {
-fontSize: 16,
-fontWeight: '600',
-color: '#3182ce',
-marginBottom: 8,
-},
-adviceText: {
-fontSize: 14,
-color: '#4a5568',
-lineHeight: 20,
-},
-weatherError: {
-alignItems: 'center',
-padding: 40,
-},
-errorText: {
-fontSize: 16,
-color: '#e53e3e',
-marginBottom: 15,
-},
-retryButton: {
-backgroundColor: '#3182ce',
-paddingHorizontal: 20,
-paddingVertical: 10,
-borderRadius: 8,
-},
-retryText: {
-color: '#fff',
-fontWeight: '500',
-},
-
-// Drawer Styles
-drawerOverlay: {
-position: 'absolute',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0,
-backgroundColor: 'rgba(0,0,0,0.5)',
-zIndex: 100,
-},
-overlayTouchable: {
-flex: 1,
-},
-drawer: {
-position: 'absolute',
-top: 0,
-left: 0,
-bottom: 0,
-width: width * 0.8,
-backgroundColor: '#fff',
-zIndex: 101,
-paddingTop: Platform.OS === 'ios' ? 40 : StatusBar.currentHeight + 20,
-},
-drawerHeader: {
-padding: 20,
-borderBottomWidth: 1,
-borderBottomColor: '#edf2f7',
-},
-drawerProfileSection: {
-alignItems: 'center',
-},
-drawerProfileImageContainer: {
-marginBottom: 15,
-},
-drawerProfileImage: {
-width: 80,
-height: 80,
-borderRadius: 40,
-borderWidth: 2,
-borderColor: '#667eea',
-},
-drawerDefaultAvatar: {
-width: 80,
-height: 80,
-borderRadius: 40,
-backgroundColor: '#ebf4ff',
-justifyContent: 'center',
-alignItems: 'center',
-borderWidth: 2,
-borderColor: '#667eea',
-},
-drawerUsername: {
-fontSize: 18,
-fontWeight: '600',
-color: '#2d3748',
-marginBottom: 5,
-},
-drawerEmail: {
-fontSize: 14,
-color: '#718096',
-},
-drawerContent: {
-flex: 1,
-paddingVertical: 10,
-},
-drawerItem: {
-flexDirection: 'row',
-alignItems: 'center',
-paddingVertical: 15,
-paddingHorizontal: 25,
-borderBottomWidth: 1,
-borderBottomColor: '#edf2f7',
-},
-drawerItemText: {
-fontSize: 16,
-color: '#4a5568',
-marginLeft: 15,
-},
-drawerLogoutItem: {
-marginTop: 20,
-borderTopWidth: 1,
-borderTopColor: '#edf2f7',
-borderBottomWidth: 0,
-},
-drawerLogoutText: {
-color: '#e53e3e',
-},
-
-// Modal Styles
-modalContainer: {
-flex: 1,
-backgroundColor: '#fff',
-},
-modalHeader: {
-flexDirection: 'row',
-justifyContent: 'space-between',
-alignItems: 'center',
-padding: 20,
-borderBottomWidth: 1,
-borderBottomColor: '#edf2f7',
-},
-modalTitle: {
-fontSize: 20,
-fontWeight: '600',
-color: '#2d3748',
-},
-modalContent: {
-flex: 1,
-padding: 20,
-},
-profileImageSection: {
-alignItems: 'center',
-marginBottom: 30,
-},
-profileImageButton: {
-position: 'relative',
-marginBottom: 10,
-},
-modalProfileImage: {
-width: 120,
-height: 120,
-borderRadius: 60,
-borderWidth: 3,
-borderColor: '#667eea',
-},
-modalDefaultAvatar: {
-width: 120,
-height: 120,
-borderRadius: 60,
-backgroundColor: '#ebf4ff',
-justifyContent: 'center',
-alignItems: 'center',
-borderWidth: 3,
-borderColor: '#667eea',
-},
-cameraIcon: {
-position: 'absolute',
-bottom: 5,
-right: 5,
-backgroundColor: '#667eea',
-width: 30,
-height: 30,
-borderRadius: 15,
-justifyContent: 'center',
-alignItems: 'center',
-},
-changePhotoText: {
-fontSize: 14,
-color: '#718096',
-},
-inputGroup: {
-marginBottom: 20,
-},
-inputLabel: {
-fontSize: 14,
-color: '#4a5568',
-marginBottom: 8,
-fontWeight: '500',
-},
-input: {
-backgroundColor: '#f8fafc',
-borderWidth: 1,
-borderColor: '#e2e8f0',
-borderRadius: 8,
-padding: 12,
-fontSize: 16,
-color: '#2d3748',
-},
-genderButtons: {
-flexDirection: 'row',
-justifyContent: 'space-between',
-marginTop: 10,
-},
-genderButton: {
-flex: 1,
-marginHorizontal: 5,
-padding: 12,
-borderRadius: 8,
-backgroundColor: '#f8fafc',
-borderWidth: 1,
-borderColor: '#e2e8f0',
-alignItems: 'center',
-},
-genderButtonActive: {
-backgroundColor: '#667eea',
-borderColor: '#667eea',
-},
-genderButtonText: {
-color: '#4a5568',
-fontWeight: '500',
-},
-genderButtonTextActive: {
-color: '#fff',
-},
-modalButtons: {
-flexDirection: 'row',
-justifyContent: 'space-between',
-marginTop: 30,
-},
-saveButton: {
-flex: 1,
-backgroundColor: '#667eea',
-padding: 15,
-borderRadius: 8,
-alignItems: 'center',
-marginRight: 10,
-},
-disabledButton: {
-opacity: 0.7,
-},
-saveButtonText: {
-color: '#fff',
-fontWeight: '600',
-fontSize: 16,
-},
-cancelButton: {
-flex: 1,
-backgroundColor: '#f8fafc',
-padding: 15,
-borderRadius: 8,
-alignItems: 'center',
-borderWidth: 1,
-borderColor: '#e2e8f0',
-},
-cancelButtonText: {
-color: '#4a5568',
-fontWeight: '600',
-fontSize: 16,
-},
+  actionCardWrapper: {
+    width: '48%',
+    marginBottom: 15,
+  },
+  actionCard: {
+    padding: 15,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  actionLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statCard: {
+    width: '30%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginVertical: 5,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 10,
+  },
+  drawer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: width * 0.85,
+    backgroundColor: '#fff',
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
+  drawerHeaderGradient: {
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  drawerHeader: {
+    alignItems: 'center',
+  },
+  drawerProfileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  drawerDefaultAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  drawerUsername: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 10,
+  },
+  drawerEmail: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 5,
+  },
+  drawerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    marginTop: 10,
+  },
+  drawerBadgeText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '500',
+    marginLeft: 5,
+  },
+  drawerContent: {
+    flex: 1,
+    paddingTop: 15,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  drawerIconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  logoutIconContainer: {
+    backgroundColor: 'rgba(244,67,54,0.1)',
+  },
+  drawerItemText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  logoutText: {
+    color: '#f44336',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeaderGradient: {
+    paddingTop: 10,
+    paddingBottom: 15,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  imageSection: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  modalProfileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+  },
+  modalDefaultAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+  },
+  cameraButton: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: '#4CAF50',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  changePhotoText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 10,
+  },
+  formSection: {
+    marginBottom: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  genderButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
+  },
+  genderButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    marginHorizontal: 3,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  genderButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  genderButtonText: {
+    color: '#666',
+    fontWeight: '500',
+  },
+  genderButtonTextActive: {
+    color: '#fff',
+  },
+  modalButtons: {
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  saveButton: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 15,
+  },
+  saveButtonGradient: {
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  cancelButton: {
+    padding: 15,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
 
 export default UserDashboard;
