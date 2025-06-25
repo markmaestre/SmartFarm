@@ -315,7 +315,7 @@ const UserDashboard = () => {
 
   const navItems = [
     { icon: 'home', label: 'Farm Dashboard', route: 'UserDashboard', color: '#2E7D32', bgColor: '#E8F5E8' },
-    { icon: 'bar-chart', label: 'Crop Intelligence', route: 'CropGuide', color: '#FF8F00', bgColor: '#FFF3E0' },
+    { icon: 'bar-chart', label: 'Crop Intelligence', route: 'Weather', color: '#FF8F00', bgColor: '#FFF3E0' },
     { icon: 'storefront', label: 'Market Connect', route: 'MarketLink', color: '#1976D2', bgColor: '#E3F2FD' },
     { icon: 'book', label: 'Farm Records', route: 'FarmDiary', color: '#7B1FA2', bgColor: '#F3E5F5' },
     { icon: 'school', label: 'Agricultural Learning', route: 'Elearning', color: '#D32F2F', bgColor: '#FFEBEE' },
@@ -324,7 +324,7 @@ const UserDashboard = () => {
 
   const drawerItems = [
     { icon: 'home-outline', label: 'Farm Dashboard', action: () => navigation.navigate('UserDashboard') },
-    { icon: 'bar-chart-outline', label: 'Crop Intelligence', action: () => navigation.navigate('CropGuide') },
+    { icon: 'bar-chart-outline', label: 'Crop Intelligence', action: () => navigation.navigate('Weather') },
     { icon: 'storefront-outline', label: 'Market Connect', action: () => navigation.navigate('MarketLink') },
     { icon: 'book-outline', label: 'Farm Records', action: () => navigation.navigate('FarmDiary') },
     { icon: 'school-outline', label: 'Agricultural Learning', action: () => navigation.navigate('Elearning') },
