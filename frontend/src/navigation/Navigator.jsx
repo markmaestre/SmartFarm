@@ -13,6 +13,7 @@ import Chatbot from '../components/Client/Chatbot';
 import FarmDiary from '../components/Client/FarmDiary';
 import MarketLink from '../components/Client/MarketLink';
 import Weather from '../components/Client/Weather';
+import Predict from '../components/Client/Predict';
 
 const Stack = createStackNavigator();
 
@@ -41,6 +42,7 @@ const Navigator = () => {
         <Stack.Screen name="FarmDiary" component={FarmDiary} />
         <Stack.Screen name="MarketLink" component={MarketLink} />
         <Stack.Screen name="Weather" component={Weather} />
+        <Stack.Screen name="Predict" component={Predict} />
 
       </Stack.Navigator>
     </Provider>

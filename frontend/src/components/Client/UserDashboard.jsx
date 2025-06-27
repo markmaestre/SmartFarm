@@ -314,12 +314,13 @@ const UserDashboard = () => {
   };
 
   const navItems = [
-    { icon: 'home', label: 'Farm Dashboard', route: 'UserDashboard', color: '#2E7D32', bgColor: '#E8F5E8' },
-    { icon: 'bar-chart', label: 'Crop Intelligence', route: 'Weather', color: '#FF8F00', bgColor: '#FFF3E0' },
+    { icon: 'cloud', label: 'Weather', route: 'Weather', color: '#FF8F00', bgColor: '#FFF3E0' },
+    { icon: 'bar-chart', label: 'Prediction', route: 'Predict', color: '#FF8F00', bgColor: '#FFF3E0' },
     { icon: 'storefront', label: 'Market Connect', route: 'MarketLink', color: '#1976D2', bgColor: '#E3F2FD' },
     { icon: 'book', label: 'Farm Records', route: 'FarmDiary', color: '#7B1FA2', bgColor: '#F3E5F5' },
     { icon: 'school', label: 'Agricultural Learning', route: 'Elearning', color: '#D32F2F', bgColor: '#FFEBEE' },
     { icon: 'chatbubbles-outline', label: 'Farm Assistant', route: 'Chatbot', color: '#F57C00', bgColor: '#FFF8E1' },
+    
   ];
 
   const drawerItems = [

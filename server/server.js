@@ -6,6 +6,7 @@ const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
 const farmDiaryRoutes = require('./routes/farmDiaryRoutes');
 const marketRoutes = require('./routes/marketRoutes')
+const predictionRoutes = require('./routes/predictionRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -16,7 +17,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes)
 app.use('/api/farmdiary', farmDiaryRoutes);
 app.use('/api/market', marketRoutes);
-
+app.use('/api/predict', predictionRoutes);
 
 
 mongoose.connect(process.env.MONGO_URI, {
