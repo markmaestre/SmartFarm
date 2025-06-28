@@ -6,7 +6,7 @@ const auth = require('../Middleware/auth');
 
 const router = express.Router();
 
-
+// ✅ Register
 router.post('/register', async (req, res) => {
   const { username, email, password, bod, gender, address, role } = req.body;
   try {
@@ -23,16 +23,23 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Server error during registration' });
   }
 });
+
+// ✅ Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
+
+    if (user.status === 'banned') {
+      return res.status(403).json({ message: 'Account is banned. Contact admin.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
 
-    user.lastLogin = new Date();  // 🆕 Update last login
+    user.lastLogin = new Date();
     await user.save();
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
@@ -48,8 +55,9 @@ router.post('/login', async (req, res) => {
         bod: user.bod,
         address: user.address,
         profile: user.profile,
-        createdAt: user.createdAt,      
-        lastLogin: user.lastLogin      
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+        status: user.status
       },
     });
   } catch (error) {
@@ -57,11 +65,9 @@ router.post('/login', async (req, res) => {
   }
 });
 
-
-// ✅ EDIT PROFILE ROUTE
+// ✅ Edit Profile
 router.put('/profile', auth, async (req, res) => {
   const { username, bod, gender, address, profile } = req.body;
-
   try {
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
@@ -84,6 +90,7 @@ router.put('/profile', auth, async (req, res) => {
         address: updatedUser.address,
         profile: updatedUser.profile,
         role: updatedUser.role,
+        status: updatedUser.status
       },
     });
   } catch (error) {
@@ -91,17 +98,41 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+
 router.get('/all-users', auth, async (req, res) => {
   try {
- 
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. Admins only.' });
     }
 
-    const users = await User.find().select('-password'); 
+    const users = await User.find().select('-password');
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Server error fetching users' });
+  }
+});
+
+router.put('/ban/:id', auth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admins only.' });
+  }
+
+  const { status } = req.body; 
+
+  if (!['banned', 'active'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status value' });
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(req.params.id, { status }, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: `User status updated to ${status}`, user });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating user status' });
   }
 });
 

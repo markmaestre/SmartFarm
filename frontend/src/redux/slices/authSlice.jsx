@@ -6,7 +6,7 @@ const initialState = {
   token: null,
   loading: false,
   error: null,
-  users: [], 
+  users: [],
 };
 
 // ✅ Register
@@ -19,6 +19,7 @@ export const registerUser = createAsyncThunk('users/register', async (formData, 
   }
 });
 
+// ✅ Login
 export const loginUser = createAsyncThunk('users/login', async ({ email, password }, thunkAPI) => {
   try {
     const res = await axiosInstance.post('/users/login', { email, password });
@@ -28,7 +29,7 @@ export const loginUser = createAsyncThunk('users/login', async ({ email, passwor
   }
 });
 
-
+// ✅ Edit Profile
 export const editProfile = createAsyncThunk('users/editProfile', async (formData, thunkAPI) => {
   try {
     const state = thunkAPI.getState();
@@ -46,7 +47,7 @@ export const editProfile = createAsyncThunk('users/editProfile', async (formData
   }
 });
 
-
+// ✅ Fetch All Users (Admin Only)
 export const fetchAllUsers = createAsyncThunk('users/fetchAllUsers', async (_, thunkAPI) => {
   try {
     const state = thunkAPI.getState();
@@ -58,11 +59,32 @@ export const fetchAllUsers = createAsyncThunk('users/fetchAllUsers', async (_, t
       },
     });
 
-    return res.data; 
+    return res.data;
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || 'Failed to fetch users');
   }
 });
+
+// ✅ Update User Status (Ban/Activate)
+export const updateUserStatus = createAsyncThunk(
+  'users/updateUserStatus',
+  async ({ id, status }, thunkAPI) => {
+    try {
+      const state = thunkAPI.getState();
+      const token = state.auth.token;
+
+      const res = await axiosInstance.put(`/users/ban/${id}`, { status }, {
+        headers: {
+          Authorization: token,
+        },
+      });
+
+      return res.data.user;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response?.data?.message || 'Failed to update user status');
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: 'auth',
@@ -76,7 +98,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Register
+      // ✅ Register
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -89,7 +111,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Login
+      // ✅ Login
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -104,7 +126,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Edit Profile
+      // ✅ Edit Profile
       .addCase(editProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -118,7 +140,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ Fetch All Users (Admin Only)
+      // ✅ Fetch All Users
       .addCase(fetchAllUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -128,6 +150,23 @@ const authSlice = createSlice({
         state.users = action.payload;
       })
       .addCase(fetchAllUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // ✅ Update User Status (Ban/Activate)
+      .addCase(updateUserStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUserStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedUser = action.payload;
+        state.users = state.users.map((user) =>
+          user._id === updatedUser._id ? updatedUser : user
+        );
+      })
+      .addCase(updateUserStatus.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
