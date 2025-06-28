@@ -23,15 +23,17 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Server error during registration' });
   }
 });
-
-// Login route (already exists)
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid email or password' });
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
+
+    user.lastLogin = new Date();  // 🆕 Update last login
+    await user.save();
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
@@ -46,12 +48,15 @@ router.post('/login', async (req, res) => {
         bod: user.bod,
         address: user.address,
         profile: user.profile,
+        createdAt: user.createdAt,      
+        lastLogin: user.lastLogin      
       },
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error during login' });
   }
 });
+
 
 // ✅ EDIT PROFILE ROUTE
 router.put('/profile', auth, async (req, res) => {
