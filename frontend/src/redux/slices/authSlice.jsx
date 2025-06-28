@@ -6,9 +6,10 @@ const initialState = {
   token: null,
   loading: false,
   error: null,
+  users: [], 
 };
 
-// Register
+// ✅ Register
 export const registerUser = createAsyncThunk('users/register', async (formData, thunkAPI) => {
   try {
     const res = await axiosInstance.post('/users/register', formData);
@@ -18,7 +19,6 @@ export const registerUser = createAsyncThunk('users/register', async (formData, 
   }
 });
 
-// Login
 export const loginUser = createAsyncThunk('users/login', async ({ email, password }, thunkAPI) => {
   try {
     const res = await axiosInstance.post('/users/login', { email, password });
@@ -28,7 +28,7 @@ export const loginUser = createAsyncThunk('users/login', async ({ email, passwor
   }
 });
 
-// ✅ Edit Profile
+
 export const editProfile = createAsyncThunk('users/editProfile', async (formData, thunkAPI) => {
   try {
     const state = thunkAPI.getState();
@@ -46,6 +46,24 @@ export const editProfile = createAsyncThunk('users/editProfile', async (formData
   }
 });
 
+
+export const fetchAllUsers = createAsyncThunk('users/fetchAllUsers', async (_, thunkAPI) => {
+  try {
+    const state = thunkAPI.getState();
+    const token = state.auth.token;
+
+    const res = await axiosInstance.get('/users/all-users', {
+      headers: {
+        Authorization: token,
+      },
+    });
+
+    return res.data; 
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || 'Failed to fetch users');
+  }
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -53,6 +71,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.users = [];
     },
   },
   extraReducers: (builder) => {
@@ -85,7 +104,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ Edit Profile
+      // Edit Profile
       .addCase(editProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -95,6 +114,20 @@ const authSlice = createSlice({
         state.user = { ...state.user, ...action.payload };
       })
       .addCase(editProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // ✅ Fetch All Users (Admin Only)
+      .addCase(fetchAllUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.users = action.payload;
+      })
+      .addCase(fetchAllUsers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
