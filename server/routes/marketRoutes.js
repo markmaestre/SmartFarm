@@ -7,18 +7,17 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
 
-// Cloudinary Config
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Multer memory storage
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// ➕ CREATE MARKET POST
+
 router.post('/', auth, upload.single('image'), async (req, res) => {
   try {
     let imageUrl = '';
@@ -56,7 +55,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
   }
 });
 
-// 📥 GET ALL MARKET POSTS
+
 router.get('/', async (req, res) => {
   try {
     const posts = await Market.find().populate('userId', 'username email');
@@ -66,7 +65,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 🔍 GET SINGLE MARKET POST
+
 router.get('/:id', async (req, res) => {
   try {
     const post = await Market.findById(req.params.id).populate('userId', 'username email');
@@ -78,7 +77,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ✏️ UPDATE MARKET POST
+
 router.put('/:id', auth, upload.single('image'), async (req, res) => {
   try {
     let imageUrl = req.body.existingImage || '';
@@ -120,7 +119,7 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
   }
 });
 
-// ❌ DELETE MARKET POST
+
 router.delete('/:id', auth, async (req, res) => {
   try {
     const deletedPost = await Market.findByIdAndDelete(req.params.id);
