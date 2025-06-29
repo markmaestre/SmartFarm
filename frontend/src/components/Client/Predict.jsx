@@ -155,8 +155,7 @@ const Predict = () => {
       });
 
       setPrediction(response.data.predicted_days_until_harvest);
-      
-      // Animate result appearance
+    
       Animated.spring(resultAnim, {
         toValue: 1,
         tension: 100,

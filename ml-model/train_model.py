@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 import joblib
 
-# Dummy dataset
+
 data = {
     'rainfall': [100, 150, 200, 250],
     'temperature': [25, 28, 30, 32],

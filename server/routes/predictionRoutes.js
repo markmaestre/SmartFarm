@@ -7,7 +7,7 @@ router.post('/', async (req, res) => {
     try {
         const { rainfall, temperature, soil_type, crop } = req.body;
 
-        // Call Python API
+ 
         const response = await axios.post('http://localhost:5000/predict', {
             rainfall,
             temperature,
@@ -17,7 +17,7 @@ router.post('/', async (req, res) => {
 
         const predicted_days_until_harvest = response.data.predicted_days_until_harvest;
 
-        // Save to MongoDB
+        
         const saved = new PredictionData({
             rainfall,
             temperature,

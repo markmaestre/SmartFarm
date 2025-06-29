@@ -14,6 +14,7 @@ import FarmDiary from '../components/Client/FarmDiary';
 import MarketLink from '../components/Client/MarketLink';
 import Weather from '../components/Client/Weather';
 import Predict from '../components/Client/Predict';
+import DetectDisease from '../components/Client/DetectDisease';
 
 const Stack = createStackNavigator();
 
@@ -43,6 +44,7 @@ const Navigator = () => {
         <Stack.Screen name="MarketLink" component={MarketLink} />
         <Stack.Screen name="Weather" component={Weather} />
         <Stack.Screen name="Predict" component={Predict} />
+        <Stack.Screen name="DetectDisease" component={DetectDisease} />
 
       </Stack.Navigator>
     </Provider>
