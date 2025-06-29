@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../Middleware/auth');
 const FarmDiary = require('../models/FarmDiary');
 
-// CREATE
+
 router.post('/', auth, async (req, res) => {
   try {
     const diary = new FarmDiary({ ...req.body, userId: req.user.id });
@@ -14,7 +14,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// READ all entries
+
 router.get('/', auth, async (req, res) => {
   try {
     const diaries = await FarmDiary.find({ userId: req.user.id }).sort({ date: -1 });
@@ -24,7 +24,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// UPDATE
+
 router.put('/:id', auth, async (req, res) => {
   try {
     const updated = await FarmDiary.findOneAndUpdate(
@@ -39,7 +39,7 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// DELETE
+
 router.delete('/:id', auth, async (req, res) => {
   try {
     await FarmDiary.findOneAndDelete({ _id: req.params.id, userId: req.user.id });

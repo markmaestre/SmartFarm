@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axiosInstance from '../../Utils/axiosInstance';
 
-// ➕ Create Market Post
 export const createMarketPost = createAsyncThunk(
   'market/createPost',
   async ({ formData, token }, { rejectWithValue }) => {
@@ -19,7 +18,7 @@ export const createMarketPost = createAsyncThunk(
   }
 );
 
-// 📥 Fetch All Market Posts
+
 export const fetchMarketPosts = createAsyncThunk(
   'market/fetchPosts',
   async (_, { rejectWithValue }) => {
@@ -32,7 +31,6 @@ export const fetchMarketPosts = createAsyncThunk(
   }
 );
 
-// 🔍 Fetch One Post by ID
 export const fetchMarketPostById = createAsyncThunk(
   'market/fetchPostById',
   async (id, { rejectWithValue }) => {
@@ -45,7 +43,6 @@ export const fetchMarketPostById = createAsyncThunk(
   }
 );
 
-// ✏️ Update Post
 export const updateMarketPost = createAsyncThunk(
   'market/updatePost',
   async ({ id, formData, token }, { rejectWithValue }) => {
@@ -63,7 +60,6 @@ export const updateMarketPost = createAsyncThunk(
   }
 );
 
-// ❌ Delete Post
 export const deleteMarketPost = createAsyncThunk(
   'market/deletePost',
   async ({ id, token }, { rejectWithValue }) => {
@@ -71,7 +67,7 @@ export const deleteMarketPost = createAsyncThunk(
       await axiosInstance.delete(`/market/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return id; // return deleted post ID
+      return id; 
     } catch (error) {
       return rejectWithValue(error.response.data.message || 'Error deleting post');
     }
@@ -121,7 +117,7 @@ const marketSlice = createSlice({
         state.error = action.payload;
       })
 
-      // FETCH ONE
+      
       .addCase(fetchMarketPostById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -135,7 +131,7 @@ const marketSlice = createSlice({
         state.error = action.payload;
       })
 
-      // UPDATE
+      
       .addCase(updateMarketPost.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -151,7 +147,7 @@ const marketSlice = createSlice({
         state.error = action.payload;
       })
 
-      // DELETE
+      
       .addCase(deleteMarketPost.pending, (state) => {
         state.loading = true;
         state.error = null;

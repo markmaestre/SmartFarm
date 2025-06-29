@@ -33,7 +33,7 @@ const Weather = () => {
   const [activeTab, setActiveTab] = useState('current');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
-  // Animation values
+ 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const slideAnimY = useRef(new Animated.Value(50)).current;
@@ -41,7 +41,7 @@ const Weather = () => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const searchAnim = useRef(new Animated.Value(0)).current;
 
-  // Start animations
+  
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -80,7 +80,7 @@ const Weather = () => {
     );
     pulseAnimation.start();
 
-    // Rotation animation
+   
     const rotateAnimation = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
@@ -214,12 +214,12 @@ const Weather = () => {
   };
 
   const getGradientColors = (weatherCode) => {
-    if (weatherCode <= 1) return ['#FF9500', '#FF5722']; // Sunny
-    if (weatherCode <= 3) return ['#4FC3F7', '#29B6F6']; // Cloudy
-    if (weatherCode >= 61 && weatherCode <= 65) return ['#607D8B', '#455A64']; // Rainy
-    if (weatherCode >= 71 && weatherCode <= 75) return ['#E3F2FD', '#BBDEFB']; // Snowy
-    if (weatherCode >= 95) return ['#424242', '#212121']; // Stormy
-    return ['#4A90E2', '#357ABD']; // Default
+    if (weatherCode <= 1) return ['#FF9500', '#FF5722']; 
+    if (weatherCode <= 3) return ['#4FC3F7', '#29B6F6']; 
+    if (weatherCode >= 61 && weatherCode <= 65) return ['#607D8B', '#455A64']; 
+    if (weatherCode >= 71 && weatherCode <= 75) return ['#E3F2FD', '#BBDEFB']; 
+    if (weatherCode >= 95) return ['#424242', '#212121']; 
+    return ['#4A90E2', '#357ABD']; 
   };
 
   const leafletHtml = `

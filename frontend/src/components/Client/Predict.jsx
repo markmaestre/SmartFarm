@@ -31,14 +31,14 @@ const Predict = () => {
   const [rainfall, setRainfall] = useState(null);
   const [temperature, setTemperature] = useState(null);
 
-  // Animation values
+ 
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideAnim = useState(new Animated.Value(50))[0];
   const scaleAnim = useState(new Animated.Value(0.9))[0];
   const resultAnim = useState(new Animated.Value(0))[0];
   const pulseAnim = useState(new Animated.Value(1))[0];
 
-  // Soil type data with colors and icons
+  
   const soilTypes = [
     { label: 'Loamy Soil', value: '1', color: '#8B4513', icon: 'leaf-outline' },
     { label: 'Clay Soil', value: '2', color: '#CD853F', icon: 'water-outline' },
@@ -57,7 +57,7 @@ const Predict = () => {
   ];
 
   useEffect(() => {
-    // Start entrance animations
+   
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -76,7 +76,7 @@ const Predict = () => {
       }),
     ]).start();
 
-    // Pulse animation for loading
+    
     const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -104,7 +104,6 @@ const Predict = () => {
         const loc = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = loc.coords;
 
-        // Reverse geocode
         const place = await Location.reverseGeocodeAsync({
           latitude,
           longitude,
@@ -115,7 +114,6 @@ const Predict = () => {
           setLocationName(`${city || region}, ${country}`);
         }
 
-        // Fetch weather
         const weatherRes = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation`
         );
@@ -143,7 +141,7 @@ const Predict = () => {
 
     setPredicting(true);
     
-    // Reset result animation
+   
     resultAnim.setValue(0);
 
     try {

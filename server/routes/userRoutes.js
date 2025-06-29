@@ -6,7 +6,7 @@ const auth = require('../Middleware/auth');
 
 const router = express.Router();
 
-// ✅ Register
+
 router.post('/register', async (req, res) => {
   const { username, email, password, bod, gender, address, role } = req.body;
   try {
@@ -24,7 +24,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// ✅ Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -65,7 +64,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ✅ Edit Profile
 router.put('/profile', auth, async (req, res) => {
   const { username, bod, gender, address, profile } = req.body;
   try {

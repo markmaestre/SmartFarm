@@ -11,7 +11,6 @@ import io
 app = Flask(__name__)
 CORS(app)
 
-# Load the trained model
 model = load_model("model/crop_disease_model.h5")
 
 # Load class names
@@ -28,15 +27,15 @@ def detect():
     try:
         print(f"[INFO] Received file: {file.filename}, type: {file.mimetype}")
 
-        # Validate the image format (safe against non-image uploads)
+   
         file_bytes = file.read()
-        file.seek(0)  # reset pointer after reading
+        file.seek(0)  
         image_type = imghdr.what(None, h=file_bytes)
 
         if image_type not in ['jpeg', 'png', 'bmp', 'webp']:
             return jsonify({"error": f"Unsupported image type: {image_type}"}), 400
 
-        # Load the image from the stream
+       
         img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
         img = img.resize((128, 128))
         img_array = np.array(img) / 255.0

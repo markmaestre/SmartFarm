@@ -108,15 +108,14 @@ const UserDashboard = () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setLocationError('Location permission denied');
-        // Default to Manila coordinates
+
         await fetchWeatherByCoordinates(14.5995, 120.9842, 'Manila, Philippines');
         return;
       }
 
       let location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-      
-      // Get location name using reverse geocoding
+    
       try {
         const locationName = await getLocationName(latitude, longitude);
         await fetchWeatherByCoordinates(latitude, longitude, locationName);
@@ -126,7 +125,7 @@ const UserDashboard = () => {
     } catch (error) {
       console.error('Error getting location:', error);
       setLocationError('Unable to get location');
-      // Default to Manila coordinates
+      
       await fetchWeatherByCoordinates(14.5995, 120.9842, 'Manila, Philippines');
     } finally {
       setLoading(false);
@@ -148,7 +147,7 @@ const UserDashboard = () => {
 
   const fetchWeatherByCoordinates = async (lat, lon, locationName = 'Your Location') => {
     try {
-      // Open-Meteo API call
+ 
       const response = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
       );
@@ -173,7 +172,7 @@ const UserDashboard = () => {
     }
   };
 
-  // WMO Weather interpretation codes to descriptions
+ 
   const getWeatherDescription = (code) => {
     const weatherCodes = {
       0: 'Clear sky',
@@ -343,7 +342,7 @@ const UserDashboard = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
       
-      {/* Header with Gradient */}
+    
       <LinearGradient
         colors={['#2E7D32', '#4CAF50', '#66BB6A']}
         style={styles.headerGradient}
@@ -383,13 +382,13 @@ const UserDashboard = () => {
       </LinearGradient>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Date and Time Section */}
+     
         <View style={styles.dateTimeSection}>
           <Text style={styles.currentDate}>{formatDate(currentDateTime)}</Text>
           <Text style={styles.currentTime}>{formatTime(currentDateTime)}</Text>
         </View>
 
-        {/* Weather Card */}
+     
         <View style={styles.weatherSection}>
           <LinearGradient
             colors={['#1976D2', '#42A5F5']}
@@ -565,7 +564,7 @@ const UserDashboard = () => {
         </>
       )}
 
-      {/* Enhanced Edit Profile Modal */}
+   
       <Modal
         visible={showModal}
         animationType="slide"
@@ -586,7 +585,7 @@ const UserDashboard = () => {
           </LinearGradient>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {/* Profile Image Section */}
+            
             <View style={styles.imageSection}>
               <TouchableOpacity onPress={handleImagePicker} style={styles.imageContainer}>
                 {formData.profile ? (
@@ -686,7 +685,7 @@ const UserDashboard = () => {
               </View>
             </View>
 
-            {/* Action Buttons */}
+        
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 onPress={handleSubmit} 

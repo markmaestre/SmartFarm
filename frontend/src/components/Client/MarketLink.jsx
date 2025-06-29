@@ -454,7 +454,7 @@ const MarketLink = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalContent}
           >
-            {/* Modal Header */}
+            
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={resetForm} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
@@ -489,7 +489,7 @@ const MarketLink = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Product Photo Section */}
+        
               <View style={styles.formSection}>
                 <Text style={styles.sectionTitle}>📷 Product Photo</Text>
                 <TouchableOpacity 
@@ -516,7 +516,7 @@ const MarketLink = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Product Information */}
+           
               <View style={styles.formSection}>
                 <Text style={styles.sectionTitle}>📝 Product Information</Text>
                 
@@ -620,8 +620,6 @@ const MarketLink = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1B5E20" />
-      
-      {/* Enhanced Header */}
       <LinearGradient
         colors={['#1B5E20', '#2E7D32', '#4CAF50']}
         style={styles.header}
@@ -643,8 +641,6 @@ const MarketLink = () => {
           </View>
         </View>
       </LinearGradient>
-
-      {/* Search and Filter Section */}
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
           <Text style={styles.searchIcon}>🔍</Text>
@@ -663,8 +659,6 @@ const MarketLink = () => {
         
         {renderFilterChips()}
       </View>
-
-      {/* Add Product Button */}
       <TouchableOpacity
         style={styles.addProductButton}
         onPress={() => setShowForm(true)}
@@ -729,7 +723,7 @@ const MarketLink = () => {
         />
       )}
 
-      {/* Form Modal */}
+    
       {renderFormModal()}
     </SafeAreaView>
   );
@@ -1150,7 +1144,7 @@ const styles = StyleSheet.create({
   listSeparator: {
     height: 8,
   },
-  // Modal Styles
+  
   modalContainer: {
     flex: 1,
     backgroundColor: '#F8F9FA',

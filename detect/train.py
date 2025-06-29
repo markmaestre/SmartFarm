@@ -35,4 +35,4 @@ model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accur
 model.fit(train_data, epochs=10, validation_data=val_data)
 
 model.save("model/crop_disease_model.h5")
-print("✅ Model trained and saved.")
+print("Model trained and saved.")

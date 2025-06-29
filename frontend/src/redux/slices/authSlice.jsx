@@ -9,7 +9,6 @@ const initialState = {
   users: [],
 };
 
-// ✅ Register
 export const registerUser = createAsyncThunk('users/register', async (formData, thunkAPI) => {
   try {
     const res = await axiosInstance.post('/users/register', formData);
@@ -19,7 +18,6 @@ export const registerUser = createAsyncThunk('users/register', async (formData, 
   }
 });
 
-// ✅ Login
 export const loginUser = createAsyncThunk('users/login', async ({ email, password }, thunkAPI) => {
   try {
     const res = await axiosInstance.post('/users/login', { email, password });
@@ -29,7 +27,7 @@ export const loginUser = createAsyncThunk('users/login', async ({ email, passwor
   }
 });
 
-// ✅ Edit Profile
+
 export const editProfile = createAsyncThunk('users/editProfile', async (formData, thunkAPI) => {
   try {
     const state = thunkAPI.getState();
@@ -47,7 +45,6 @@ export const editProfile = createAsyncThunk('users/editProfile', async (formData
   }
 });
 
-// ✅ Fetch All Users (Admin Only)
 export const fetchAllUsers = createAsyncThunk('users/fetchAllUsers', async (_, thunkAPI) => {
   try {
     const state = thunkAPI.getState();
@@ -65,7 +62,6 @@ export const fetchAllUsers = createAsyncThunk('users/fetchAllUsers', async (_, t
   }
 });
 
-// ✅ Update User Status (Ban/Activate)
 export const updateUserStatus = createAsyncThunk(
   'users/updateUserStatus',
   async ({ id, status }, thunkAPI) => {
@@ -98,7 +94,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // ✅ Register
+
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -111,7 +107,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ Login
+      
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -126,7 +122,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ Edit Profile
+     
       .addCase(editProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -140,7 +136,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ Fetch All Users
+   
       .addCase(fetchAllUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -154,7 +150,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ✅ Update User Status (Ban/Activate)
+     
       .addCase(updateUserStatus.pending, (state) => {
         state.loading = true;
         state.error = null;
