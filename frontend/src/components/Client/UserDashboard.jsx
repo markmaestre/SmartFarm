@@ -43,6 +43,8 @@ const UserDashboard = () => {
     new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
   ]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   
@@ -314,14 +316,15 @@ const UserDashboard = () => {
   };
 
   const navItems = [
-    { icon: 'cloud', label: 'Weather', route: 'Weather', color: '#FF8F00', bgColor: '#FFF3E0' },
-    { icon: 'bar-chart', label: 'Prediction', route: 'Predict', color: '#FF8F00', bgColor: '#FFF3E0' },
-    { icon: 'storefront', label: 'Market Connect', route: 'MarketLink', color: '#1976D2', bgColor: '#E3F2FD' },
-    { icon: 'book', label: 'Farm Records', route: 'FarmDiary', color: '#7B1FA2', bgColor: '#F3E5F5' },
-    { icon: 'school', label: 'Agricultural Learning', route: 'Elearning', color: '#D32F2F', bgColor: '#FFEBEE' },
-    { icon: 'chatbubbles-outline', label: 'Farm Assistant', route: 'Chatbot', color: '#F57C00', bgColor: '#FFF8E1' },
-    
-  ];
+  { icon: 'cloud', label: 'Weather', route: 'Weather', color: '#FF8F00', bgColor: '#FFF3E0' },
+  { icon: 'bar-chart', label: 'Prediction', route: 'Predict', color: '#FF8F00', bgColor: '#FFF3E0' },
+  { icon: 'storefront', label: 'Market Connect', route: 'MarketLink', color: '#1976D2', bgColor: '#E3F2FD' },
+  { icon: 'book', label: 'Farm Records', route: 'FarmDiary', color: '#7B1FA2', bgColor: '#F3E5F5' },
+  { icon: 'school', label: 'Agricultural Learning', route: 'Elearning', color: '#D32F2F', bgColor: '#FFEBEE' },
+  { icon: 'chatbubbles-outline', label: 'Farm Assistant', route: 'Chatbot', color: '#F57C00', bgColor: '#FFF8E1' },
+  { icon: 'bug', label: 'DetectDisease', route: 'DetectDisease', color: '#009688', bgColor: '#E0F2F1' },
+  { icon: 'people', label: 'Community Forum', route: 'CommunityForum', color: '#673AB7', bgColor: '#EDE7F6' }
+];
 
   const drawerItems = [
     { icon: 'home-outline', label: 'Farm Dashboard', action: () => navigation.navigate('UserDashboard') },
@@ -487,31 +490,11 @@ const UserDashboard = () => {
             ))}
           </View>
         </View>
-
-        {/* Farm Stats - Now using real user data */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Farm Overview</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Ionicons name="leaf" size={24} color="#4CAF50" />
-              <Text style={styles.statValue}>{user.cropCount || '0'}</Text>
-              <Text style={styles.statLabel}>Active Crops</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="calendar" size={24} color="#FF9800" />
-              <Text style={styles.statValue}>{user.harvestDue || '0'}</Text>
-              <Text style={styles.statLabel}>Harvest Due</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="trending-up" size={24} color="#2196F3" />
-              <Text style={styles.statValue}>{user.yieldEfficiency || '0%'}</Text>
-              <Text style={styles.statLabel}>Yield Efficiency</Text>
-            </View>
-          </View>
         </View>
       </ScrollView>
 
-      {/* Enhanced Drawer */}
+
       {showDrawer && (
         <>
           <TouchableOpacity 
