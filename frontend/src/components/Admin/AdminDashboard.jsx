@@ -12,6 +12,7 @@ import {
   Dimensions,
   Modal,
   SafeAreaView,
+  TextInput,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -30,6 +31,8 @@ const AdminDashboard = () => {
   const navigation = useNavigation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userManagementTab, setUserManagementTab] = useState('active');
 
   const { user, users, loading: userLoading, error: userError } = useSelector(
     (state) => state.auth
@@ -94,7 +97,7 @@ const AdminDashboard = () => {
 
   const getStats = () => {
     const totalUsers = users?.length || 0;
-    const activeUsers = users?.filter(u => u.status === 'active').length || 0;
+    const activeUsers = users?.filter(u => u.status === 'active' && u.role !== 'admin').length || 0;
     const bannedUsers = users?.filter(u => u.status === 'banned').length || 0;
     const totalPosts = posts?.length || 0;
     const activePosts = posts?.filter(p => p.status === 'active').length || 0;
@@ -102,11 +105,9 @@ const AdminDashboard = () => {
     return { totalUsers, activeUsers, bannedUsers, totalPosts, activePosts };
   };
 
-  // Get recent activity from real data
   const getRecentActivity = () => {
     const activities = [];
     
-    // Recent users (last 7 days)
     if (users) {
       users
         .filter(u => {
@@ -115,22 +116,19 @@ const AdminDashboard = () => {
           weekAgo.setDate(weekAgo.getDate() - 7);
           return userDate >= weekAgo;
         })
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 3)
         .forEach(user => {
           activities.push({
             id: `user-${user._id}`,
             type: 'user_registered',
             title: 'New User Registration',
             description: `${user.username} joined the platform`,
-            timestamp: user.createdAt,
+            timestamp: new Date(user.createdAt).getTime(),
             icon: '👤',
             color: '#3498db'
           });
         });
     }
 
-    // Recent posts (last 7 days)
     if (posts) {
       posts
         .filter(p => {
@@ -139,22 +137,19 @@ const AdminDashboard = () => {
           weekAgo.setDate(weekAgo.getDate() - 7);
           return postDate >= weekAgo;
         })
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 3)
         .forEach(post => {
           activities.push({
             id: `post-${post._id}`,
             type: 'post_created',
             title: 'New Market Post',
             description: `${post.productName} posted by ${post.userId?.username || 'Unknown'}`,
-            timestamp: post.createdAt,
+            timestamp: new Date(post.createdAt).getTime(),
             icon: '🛒',
             color: '#2ecc71'
           });
         });
     }
 
-    // Recent status changes (banned users in last 7 days)
     if (users) {
       users
         .filter(u => {
@@ -166,26 +161,41 @@ const AdminDashboard = () => {
           }
           return false;
         })
-        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-        .slice(0, 2)
         .forEach(user => {
           activities.push({
             id: `ban-${user._id}`,
             type: 'user_banned',
             title: 'User Status Changed',
             description: `${user.username} was banned`,
-            timestamp: user.updatedAt,
+            timestamp: new Date(user.updatedAt).getTime(),
             icon: '🚫',
             color: '#e74c3c'
           });
         });
     }
 
-    // Sort all activities by timestamp and return top 5
     return activities
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 5);
   };
+
+  const filteredUsers = users?.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch && user.role !== 'admin' && user.status === 'active';
+  });
+
+  const filteredBannedUsers = users?.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch && user.status === 'banned';
+  });
+
+  const filteredPosts = posts?.filter(post => {
+    const matchesSearch = post.productName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         (post.userId?.username && post.userId.username.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesSearch;
+  });
 
   const renderDrawer = () => (
     <Modal
@@ -197,7 +207,6 @@ const AdminDashboard = () => {
       <View style={styles.drawerOverlay}>
         <View style={styles.drawerContainer}>
           <SafeAreaView style={styles.drawerContent}>
-            {/* Header */}
             <View style={styles.drawerHeader}>
               <View style={styles.adminAvatar}>
                 <Text style={styles.avatarText}>
@@ -208,7 +217,6 @@ const AdminDashboard = () => {
               <Text style={styles.adminRole}>Administrator</Text>
             </View>
 
-            {/* Menu Items */}
             <ScrollView style={styles.menuContainer}>
               {menuItems.map((item) => (
                 <TouchableOpacity
@@ -220,6 +228,7 @@ const AdminDashboard = () => {
                   onPress={() => {
                     setActiveTab(item.id);
                     setIsDrawerOpen(false);
+                    setSearchQuery('');
                   }}
                 >
                   <Text style={styles.menuIcon}>{item.icon}</Text>
@@ -233,7 +242,6 @@ const AdminDashboard = () => {
               ))}
             </ScrollView>
 
-            {/* Logout Button */}
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
               <Text style={styles.logoutIcon}>🚪</Text>
               <Text style={styles.logoutText}>Logout</Text>
@@ -306,7 +314,6 @@ const AdminDashboard = () => {
           </View>
         </View>
 
-        {/* Recent Activity Section */}
         <View style={styles.activityContainer}>
           <Text style={styles.activityTitle}>Recent Activity</Text>
           {recentActivity.length > 0 ? (
@@ -340,7 +347,9 @@ const AdminDashboard = () => {
         </View>
         <View style={[
           styles.statusBadge, 
-          { backgroundColor: item.status === 'active' ? '#2ecc71' : '#e74c3c' }
+          { 
+            backgroundColor: item.status === 'active' ? '#2ecc71' : '#e74c3c'
+          }
         ]}>
           <Text style={styles.statusText}>{item.status}</Text>
         </View>
@@ -360,7 +369,9 @@ const AdminDashboard = () => {
         <TouchableOpacity
           style={[
             styles.actionButtonSmall,
-            { backgroundColor: item.status === 'banned' ? '#2ecc71' : '#e74c3c' }
+            { 
+              backgroundColor: item.status === 'banned' ? '#2ecc71' : '#e74c3c',
+            }
           ]}
           onPress={() => handleToggleBan(item._id, item.status)}
         >
@@ -387,7 +398,6 @@ const AdminDashboard = () => {
         </View>
       </View>
 
-      {/* Display images */}
       {item.images && item.images.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageContainer}>
           {item.images.map((image, index) => (
@@ -422,38 +432,120 @@ const AdminDashboard = () => {
     </View>
   );
 
+  const renderUserManagement = () => {
+    return (
+      <View style={styles.contentContainer}>
+        <Text style={styles.sectionTitle}>User Management</Text>
+        
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search users..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              userManagementTab === 'active' && styles.activeTabButton
+            ]}
+            onPress={() => setUserManagementTab('active')}
+          >
+            <Text style={[
+              styles.tabButtonText,
+              userManagementTab === 'active' && styles.activeTabButtonText
+            ]}>
+              Active Users
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              userManagementTab === 'banned' && styles.activeTabButton
+            ]}
+            onPress={() => setUserManagementTab('banned')}
+          >
+            <Text style={[
+              styles.tabButtonText,
+              userManagementTab === 'banned' && styles.activeTabButtonText
+            ]}>
+              Banned Users
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        {userLoading && <ActivityIndicator size="large" color="#3498db" />}
+        {userError && <Text style={styles.error}>Error: {userError}</Text>}
+        
+        {userManagementTab === 'active' ? (
+          <FlatList
+            data={filteredUsers || []}
+            keyExtractor={(item) => item._id}
+            renderItem={renderUserItem}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyList}>
+                <Text style={styles.emptyListText}>No active users found</Text>
+              </View>
+            }
+          />
+        ) : (
+          <FlatList
+            data={filteredBannedUsers || []}
+            keyExtractor={(item) => item._id}
+            renderItem={renderUserItem}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyList}>
+                <Text style={styles.emptyListText}>No banned users found</Text>
+              </View>
+            }
+          />
+        )}
+      </View>
+    );
+  };
+
   const renderContent = () => {
     if (activeTab === 'dashboard') {
       return renderDashboard();
     }
 
     if (activeTab === 'users') {
-      return (
-        <View style={styles.contentContainer}>
-          <Text style={styles.sectionTitle}>User Management</Text>
-          {userLoading && <ActivityIndicator size="large" color="#3498db" />}
-          {userError && <Text style={styles.error}>Error: {userError}</Text>}
-          <FlatList
-            data={users}
-            keyExtractor={(item) => item._id}
-            renderItem={renderUserItem}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      );
+      return renderUserManagement();
     }
 
     if (activeTab === 'posts') {
       return (
         <View style={styles.contentContainer}>
           <Text style={styles.sectionTitle}>Market Posts</Text>
+          
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          
           {postLoading && <ActivityIndicator size="large" color="#3498db" />}
           {postError && <Text style={styles.error}>Error: {postError}</Text>}
+          
           <FlatList
-            data={posts}
+            data={filteredPosts}
             keyExtractor={(item) => item._id}
             renderItem={renderMarketPost}
             showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyList}>
+                <Text style={styles.emptyListText}>No posts found</Text>
+              </View>
+            }
           />
         </View>
       );
@@ -471,7 +563,6 @@ const AdminDashboard = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.menuButton}
@@ -483,10 +574,8 @@ const AdminDashboard = () => {
         <View style={styles.headerRight} />
       </View>
 
-      {/* Content */}
       {renderContent()}
 
-      {/* Drawer */}
       {renderDrawer()}
     </SafeAreaView>
   );
@@ -606,8 +695,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  
-  // Recent Activity Styles
   activityContainer: {
     backgroundColor: '#fff',
     padding: 20,
@@ -646,12 +733,6 @@ const styles = StyleSheet.create({
   activityContent: {
     flex: 1,
   },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 2,
-  },
   activityDescription: {
     fontSize: 14,
     color: '#7f8c8d',
@@ -670,7 +751,6 @@ const styles = StyleSheet.create({
     color: '#7f8c8d',
     textAlign: 'center',
   },
-  
   listItem: {
     backgroundColor: '#fff',
     padding: 20,
@@ -771,8 +851,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 50,
   },
-  
-  // Drawer Styles - Updated for left side
   drawerOverlay: {
     flex: 1,
     flexDirection: 'row',
@@ -860,9 +938,57 @@ const styles = StyleSheet.create({
     marginRight: 20,
     width: 30,
   },
-  logoutText: {
+  logoutText: { 
     fontSize: 16,
     color: '#e74c3c',
+    fontWeight: 'bold',
+  },
+  searchContainer: {
+    marginBottom: 20,
+  },
+  searchInput: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  emptyList: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyListText: {
+    fontSize: 16,
+    color: '#7f8c8d',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  activeTabButton: {
+    borderBottomColor: '#3498db',
+  },
+  tabButtonText: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    fontWeight: '500',
+  },
+  activeTabButtonText: {
+    color: '#3498db',
     fontWeight: 'bold',
   },
 });
